@@ -1,5 +1,8 @@
 ﻿using System;
 //스레드를 사용하기 위해 다음의 library를 사용함
+//참고 csharpstudy.com에서 참고한 내용..
+//csharpstudy.com________________
+
 using System.Threading;
 
 namespace ThreadExamples
@@ -61,8 +64,34 @@ namespace ThreadExamples
             t002.IsBackground = true;//기본값은 false
             t002.Start();
             #endregion
+            #region 쓰레드 풀
+            //ThreadPool을 만들어 쓰는 이유: 
+            //Thread하나를 매번 만들어낼 때마다 컴퓨터 자원소모가 큰 편
+            //특히 그 작업이 여러번 반복되는 경우라면 저 부하가 크게 ...
+            //이미 다수의 Threadpool을 만들어 해당 ThreadPool에 이미 있는 Thread들을 활용하게 됨// 물론 Thread만드는 과정 자체가 매우 적은 편이거나 하면 오히려 ThreadPool을 쓰는 것이 최적화에 좋지 않을 수 있음
+            //리턴 값이 없을 경우
+            ThreadPool.QueueUserWorkItem(Calc); //전달된 값이 없으므로 radius = null이 됨
+            ThreadPool.QueueUserWorkItem(Calc, 10.0);
+            ThreadPool.QueueUserWorkItem(Calc, 20.0);
+
+            //.Net의 쓰레드 풀: CPU코어당 최소 1개~N개의 작업 스레드를 생성하여 운영함
+            //.Net 버전당 만들 수 있는 최대 스레드 수
+            //.net2.0 : 25, .net 3.5: 250, .net 4.0 32bit:1023, .net 4.0 64bit: 32768
+            //ThreadPool에서 쓰레드 생성: 최소 1개에서 계속 만들어서 쓰레드 풀에 생성 최대 스레드 풀 스레드만큼 생성 가능, 중간에 사용되는 스레드가 작업을 끝내고 스레드 풀로 돌아가면 재사용됨
+            //최대 스레드 만큼 생성된 뒤에도 스레드 생성 요청이 있으면 요청 스레드는 생성되지 않고 대기줄에 들어가게 됨
+            //스레드 생성시 요청하는 스레드 숫자가 해당 컴퓨터의 CPU보다 많으면..?CLR시스템: 스데르를 즉시 만들지 않고 초당 2개의 스레드를 생성하도록 늦추게 됨(Thread Throttling)
+            //CPU코어가 4개인 컴퓨터: 60개의 스레드 요청이 들어오면 4개는 즉시, 남은 56개는 56/2초 동안 생성되게 됨
+            //ThreadPool 클래스에서 디폴트 최대, 최소 숫자를 재설정할 수 있음
+            //ThreadPool.SetMaxThreads(): 최대 숫자
+            //ThreadPool.SetMinThreads(): 최소 숫자
+            //밑 줄의 예시: 50개의 작업스레드에서 10개의 비동기 스레드가 항상 사용되는 것으로 예상되면 밑처럼 쓸 수 있음/ 미리 스레드를 생성하여 Thread Throttling현상을 미루는 것
+            //ThreadPool.SetMinThreads(50, 10);
+            #endregion
 
         }
+
+        #region Thread에서 사용할 함수들
+        //스레드 실행과 일반 함수실행을 알아보기 위한 함수
         void DoTest()
         {
             //새 스레드를 만들고 Run이라는 함수를 ThreadStart를 통해 delegate로 전달
@@ -72,7 +101,7 @@ namespace ThreadExamples
             //메인 스레드에서 함수 실행
             Run();
         }
-
+        //동작을 눈으로 확인하기 위해 만든 간단한 함수
         static void Run()
         {
             Console.WriteLine($"Thread{Thread.CurrentThread.ManagedThreadId} 시작");
@@ -82,18 +111,22 @@ namespace ThreadExamples
             Console.WriteLine($"Thread{Thread.CurrentThread.ManagedThreadId} 끝");
 
         }
+        //원 넓이 계산
         static void Calc(object radius)
         {
             double r = (double)radius;
             double area = r * r * 3.14;
-            Console.WriteLine($"r={r}, area = {area}");
+            Console.WriteLine($"r = {r}, area = {area}");
         }
+        //단순 더하기
         static void Sum(int d1, int d2, int d3)
         {
             int sum = d1 + d2 + d3;
             Console.WriteLine(sum);
         }
+        #endregion
     }
+    //다른 클래스에 있는 함수를 스레드에서 불러올 때 사용할 예제로 만든 클래스
     class Helper
     {
         public void Run()

@@ -35,6 +35,33 @@ namespace ThreadExamples
             Helper obj = new Helper();
             Thread t = new Thread(obj.Run);
             t.Start();
+            #region 쓰레드에 파라미터 전달하기
+            //ThreadStart는 변수 전달 안 됨
+            Thread t01 = new Thread(new ThreadStart(Run));
+            t01.Start();
+            //ParameterizedThreadStart라는 델리게이트를 활용
+            //오브젝트 형식으로 받기 때문에 어느 형태라도 전달 가능....
+            //클래스, 구조체를 만들어 객체를 만들어 전달할 수 있음(클래스의 여러 변수 들이라던가)
+
+            Thread t02 = new Thread(new ParameterizedThreadStart(Calc));
+            t02.Start();
+
+            //ThreadStart에서 함수에 직접 파라미터 전달
+            Thread t03 = new Thread(() => Sum(10, 20, 30));
+            t03.Start();
+
+            #endregion
+            #region Foreground_Background
+            //백그라운드 스레드로 설정: 메인스레드가 종료되면 바로 종료됨
+            //기본값은 백그라운드가 아닌 foreground스레드로 실행됨, 메인스레드가 종료되더라도 foreground스레드가 살이있다면 프로세스는 계속 실행됨
+            Thread t001 = new Thread(()=> { Run(); });
+            t001.Start();
+
+            Thread t002 = new Thread(() => { Run(); });
+            t002.IsBackground = true;//기본값은 false
+            t002.Start();
+            #endregion
+
         }
         void DoTest()
         {
@@ -54,6 +81,17 @@ namespace ThreadExamples
             Thread.Sleep(3000);
             Console.WriteLine($"Thread{Thread.CurrentThread.ManagedThreadId} 끝");
 
+        }
+        static void Calc(object radius)
+        {
+            double r = (double)radius;
+            double area = r * r * 3.14;
+            Console.WriteLine($"r={r}, area = {area}");
+        }
+        static void Sum(int d1, int d2, int d3)
+        {
+            int sum = d1 + d2 + d3;
+            Console.WriteLine(sum);
         }
     }
     class Helper

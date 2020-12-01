@@ -135,6 +135,20 @@ namespace ThreadExamples
             //Run()이라는 함수도 있는데 이 부분은 Task에 있는 여러 옵션들을 디폴트 설정으로 두고 실행하게 하는 것....
             #endregion
             #region Task<T>부분
+            //Task<T>를 이용하여 스레드 생성/시작
+            Task<int> task_int = Task.Factory.StartNew(()=> CalcSize("Hello world"));
+            //메인스레드에서 다른 작업을 시작한다고 가정
+            Thread.Sleep(1000);
+
+            //스레드 결과 돌려주기, 스레드가 계속 실행중이라면...? 대기
+            int result = task_int.Result;
+            //Task 작업 취소하는 경우...
+            //비동기 작업 취소: Cancellation Token을 사용, 
+            //CancellationTokenSource: 클래스, CancellationToken: 구조체
+            //CancellationTokenSource: CancellationToken을 생성, Cancel 요청을 CancellationToken에 보냄
+            //CancellationToken: 현재 Cancel상태를 Listener들이 모니터링하는데 사용함
+            //CancellationTokenSource 필드 선언> CancellationToken 생성>비동기 작업 메서드 안에 작업 취소 확인 코드 >취소 되면 CancellationTokenSource의 Cancel메서드를 호출, 작업 취소
+
 
             #endregion
         }
@@ -177,6 +191,13 @@ namespace ThreadExamples
         static int GetArea(int height, int width)
         {
             return height*width;
+        }
+
+        static int CalcSize(string data)
+        {
+            string s = data == null ? "": data.ToString();
+            //뭔가 로직
+            return s.Length;
         }
         #endregion
     }

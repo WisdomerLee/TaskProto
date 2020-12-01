@@ -4,6 +4,9 @@
 //csharpstudy.com________________
 
 using System.Threading;
+//Task는 스레드보다 더 나중에 나온 것.. library만 보아도....
+
+using System.Threading.Tasks;
 
 namespace ThreadExamples
 {
@@ -87,7 +90,53 @@ namespace ThreadExamples
             //밑 줄의 예시: 50개의 작업스레드에서 10개의 비동기 스레드가 항상 사용되는 것으로 예상되면 밑처럼 쓸 수 있음/ 미리 스레드를 생성하여 Thread Throttling현상을 미루는 것
             //ThreadPool.SetMinThreads(50, 10);
             #endregion
+            #region 비동기: 쓰레드풀의 쓰레드를 사용하는 방식 중에 하나
+            //.Net의 비동기 델리게이트: 스레드 풀의 스레드를 사용하는 방식, 메서드 델리게이트(Delegate, )의 BeginInvoke()를 이용하여 스레드 작업 시작을 요청할 수 있고 EndInvoke()를 이용하여 해당 스레드의 작업이 끝날 때까지 기다려서 리턴값을 넘겨받을 수도 있음
+            //BeginInvoke(): 스레드를 구동시킨 뒤 IAsyncResult 객체를 반환,
+            //IAsyncResult객체: EndInvoke()등의 메서드를 실행할 때 함수 파라미터 값으로 전달됨
 
+            //GetArea(): 메서드 활용
+            //.Net 기본 제공 Func델리게이트 활용
+            //Func앞의 2개의 int는 입력, 뒤의 int는 출력용
+            Func<int, int, int> work = GetArea;
+
+            IAsyncResult asyncRes = work.BeginInvoke(10,20, null, null);
+            Console.WriteLine("뭔가를 메인스레드에서 작동시키고 있는 중");
+            //델리게이트 객체Func의 객체로부터 EndInvoke()실행
+            //스레드가 완료되면 리턴값을 돌려받음
+            int result = work.EndInvoke(asyncRes);
+            Console.WriteLine($"결과 :{result}");
+
+
+            #endregion
+            #region Task부분
+            //Task, Task<T>클래스: .Net 4.0부터 도입된 것
+            //Task, Parallel클래스를 합쳐 Task Parallel Library라고 하는데 이것은 기본적으로 다중 CPU병렬처리를 기반에 두고 만든 것
+            //Task: ThreadPool.QueueUserWorkItem()과 같은 기능을 제공하나 보다 더 빠르고 유연한 기능을 갖춤
+
+            //생성과 함께 시작하게 하기..
+            Task.Factory.StartNew(new Action<object>(Run), null);
+            Task.Factory.StartNew(new Action<object>(Run), "1st");
+            Task.Factory.StartNew(Run, "2dn");
+
+
+            //생성은 미리 해두지만 실행은 나중으로 하도록 미뤄두고 싶다면..?
+            //Task 생성자에 Run을 지정 Task객체 생성
+            Task task1 = new Task(new Action(Run));
+            //람다식을 이용하여 Task객체 생성
+            Task task2 = new Task(()=>{Console.WriteLine("뭔가 긴 로직");});
+            //태스크시작
+            task1.Start();
+            task2.Start();
+
+            //대기
+            task1.Wait();
+            task2.Wait();
+            //Run()이라는 함수도 있는데 이 부분은 Task에 있는 여러 옵션들을 디폴트 설정으로 두고 실행하게 하는 것....
+            #endregion
+            #region Task<T>부분
+
+            #endregion
         }
 
         #region Thread에서 사용할 함수들
@@ -123,6 +172,11 @@ namespace ThreadExamples
         {
             int sum = d1 + d2 + d3;
             Console.WriteLine(sum);
+        }
+        //넓이 계산 함수
+        static int GetArea(int height, int width)
+        {
+            return height*width;
         }
         #endregion
     }

@@ -12,7 +12,9 @@ namespace ThreadExamples
 {
     class Program
     {
-
+        #region Task<T>취소를 위한 필드
+        CancellationTokenSource cancelTokenSource;
+        #endregion
         static void Main(string[] args)
         {
             #region 쓰레드 생성의 여러방식
@@ -148,7 +150,17 @@ namespace ThreadExamples
             //CancellationTokenSource: CancellationToken을 생성, Cancel 요청을 CancellationToken에 보냄
             //CancellationToken: 현재 Cancel상태를 Listener들이 모니터링하는데 사용함
             //CancellationTokenSource 필드 선언> CancellationToken 생성>비동기 작업 메서드 안에 작업 취소 확인 코드 >취소 되면 CancellationTokenSource의 Cancel메서드를 호출, 작업 취소
-
+            //밑의 부분 참고
+            var task000 = Task.Factory.StartNew<object>((state) => CalcWithStateAsync(state)
+            {
+                CancellationToken token = (CancellationToken)state;
+                //
+                if(token.IsCancellationRequested)
+                {
+                    return null;
+                }
+            }, token, //상태 param, state로 전달
+                token); //CancellationToken param
 
             #endregion
         }
@@ -198,6 +210,52 @@ namespace ThreadExamples
             string s = data == null ? "": data.ToString();
             //뭔가 로직
             return s.Length;
+        }
+        //취소 가능한 비동기 메서드
+        async void CancelableRun()
+        {
+            //CancellationTokenSource 객체 생성
+            cancelTokenSource = new CancellationTokenSource();
+            CancellationToken token = cancelTokenSource.Token;
+
+            //선택영역.. StartNew메서드는 StartNew(Func, CancellationToken)을 호출
+            //Token이 Cancel상태 false이면 메서드 자체가 실행되지 않음
+            var task01 = Task.Factory.StartNew<object>(LongCalsAsync, token);
+
+            dynamic res = await task01;
+            if(res != null)
+            {
+                Console.WriteLine("Sum:" + res.Sum);
+            }
+            else
+            {
+                Console.WriteLine("Cancelled");
+            }
+        }
+        //윈 폼에서 스타트 버튼을 눌렀을 때 생기는 이벤트....성(콘솔 프로젝트가 아닌 윈도우폼 혹은 UWP프로젝트로 작성해야 가능한 것
+        void StartClick(object sender, EventArgs e)
+        {
+            CancelableRun();
+        }
+        //윈폼에서 캔슬버튼 눌렸을 때....
+        void CancelClick(object sender, EventArgs e)
+        {
+            cancelTokenSource.Cancel();
+        }
+        object LongCalsAsync()
+        {
+            int sum = 0;
+            for(int i = 0; i<100;i++)
+            {
+                //작업 취소 상태 확인
+                if(cancelTokenSource.Token.IsCancellationRequested)
+                {
+                    return null;
+                }
+                sum +=i;
+                Thread.Sleep(1000);
+            }
+            return new { Sum = sum };
         }
         #endregion
     }

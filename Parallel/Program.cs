@@ -105,6 +105,22 @@ namespace Parallelism
         }
         //Data Parallelism의 예시를 보면 처리하는 작업은 완전히 동일함...
         //데이터 처리 갯수만 나누어 처리하는 것
+
+        #endregion
+        #region TaskPrallelism 예시
+        //Parallel.Invoke(): 여러 작업을 병렬로 처리
+        //다수의 작업 내용을 Action delegate로 받아 다중 쓰레드들로 동시에 병렬로 Task를 나누어 실행 처리하게 됨
+        //Action 델리게이트 갯수만큼 스레드를 생성하는 Task와는 달리 Parallel.Invoke()는 델리게이트를 몇몇 집합으로 나누어 상대적으로 적은 숫자의 스레드에 할당하여 실행하게 됨(어느정도 최적화가 된다는 말)
+        Parallel.Invoke(
+            ()=>{//메서드 1},
+            ()=>{//메서드 2},
+            ()=>{//메서드 3},
+            ()=>{//메서드 4},
+            ()=>{}
+            );
+
+            //DataParallelism과 달리 Task Parallelism은 각각 다른 '함수'및 다른 알고리즘을 실행하게 됨..
+
         #endregion
     }
 }

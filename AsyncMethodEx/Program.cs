@@ -13,6 +13,7 @@ namespace AsyncMethodEx
             Console.WriteLine("Hello World!");
         }
         //웬만하면 async void 표현은 되도록 쓰지 말 것.. async Task같은 형식으로 쓰도록 하자
+        //async Task: IResultAsync라는 이벤트 객체를 반환> 성공/실패가 있음..
         static async void Run()
         {
             Task<double> task = Task<double>.Factory.StartNew(() => LongCalc(10));

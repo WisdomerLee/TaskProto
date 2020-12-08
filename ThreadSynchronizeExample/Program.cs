@@ -13,6 +13,8 @@
 
 using System;
 using System.Threading;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace ThreadSynchronizeExample
 {
@@ -67,9 +69,158 @@ namespace ThreadSynchronizeExample
         }
         //safe하게 처리하면 unsafe와달리 결과가 순차적으로 증가하는 형태로 출력됨....
         #endregion
+        #region Monitor
+        //Monitor클래스: lock처럼 특정 코드 블럭을 배타적으로 접근하게 하는 것
+        //Monitor.Enter(): 특정 코드 블럭을 시작하여 한 스레드만 블럭에 접근하게 .... Monitor.Exit()은 잠금을 해제하여 다음 스레드가 접근할 수 있게 함
+        //lock은 Monitor.Enter()와 Monitor.Exit()을 간단히 사용한 것이라 볼 수 있음 using()구문이 try{}finally{}의 간략한 표현이듯..
+        void SafeCalc02()
+        {
+            //아래의 로직은 스레드 하나당 한 번에 하나씩 접근하게
+            Monitor.Enter(lockObject);
+            try
+            {
+                count++;
+                //그 외 복잡한 로직
+
+            }
+            finally
+            {
+                //그리고 제한을 풀어낸다
+                Monitor.Exit(lockObject);
+            }
+        }
+
+        //또다른 것으로 Wait()과 Pulse()/PulseAll()이 있음
+        //Wait()는 현재 스레드를 잠시 중지하고 lock을 풂, 다른 스레드에서 Pulse 신호가 올 때까지 대기함... 
+        //다른 스레드가 lock을 획득하고 작업을 실행, Pulse()메서드를 호출하면 대기중인 스레드가 다시 lock을 얻어 다음 작업을 실행하게 됨
+        //Pulse()메서드가 호출될 때 대기중인 스레드가 있으면 그 스레드가 작업을 계속하지만 대기중인 것이 없으면 Pulse신호가 사라짐
+        //AutoResetEvent도 이와 비슷함. 차이가 있다면 AutoResetEvent는 Set()메서드로 펄스 신호를 보내는데 대기 중인 스레드가 없을 때에도 펄스 신호가 있었다는 것을 계속 가지고 있음...
+        //Pulse()는 대기중인 하나의 스레드만 실행하지만 PulseAll()메서드는 현재 대기중인 모든 스레드를 실행하게 함
+
+        //Monitor클래스: Wait(), Pulse()메서드를 호출하려면 해당 메서드들이 lock으로 잠긴 블럭 내에서 호출되어야 함!! 중요
+
+        static Queue Q = new Queue();
+        static object lockObj = new object();
+        static bool running = true;
+        
         static void Main(string[] args)
         {
+            //Reader 스레드 시작
+            Thread reader = new Thread(ReadQueue);
+            reader.Start();
+
+            List<Thread> threads = new List<Thread>();
+            //Writer스레드 시작
+            for(int i = 0; i<10; i++)
+            {
+                var t = new Thread(new ParameterizedThreadStart(WriteQueue));
+                t.Start(i);
+                threads.Add(t);
+            }
+            //모든 Writer스레드가 종료될 때까지 대기
+            threads.ForEach(p => p.Join());
+
+            running = false;
+            //reader종료
+
+            #endregion
+            #region Mutex
+            //Mutex클래스: Monitor클래스처럼 특정 코드 블럭을 배타적으로 접근시킴, Monitor는 하나의 프로세스 내에서만 사용되는 반면 Mutex는 특정 기기의 프로세스 간에 배타적 접근을 허용할 때 사용됨
+            //그래서 Monitor클래스보다 50배나 느리다...
+            //2개 스레드 실행
+            Thread t1 = new Thread(() => MyClass.AddList(10));
+            Thread t2 = new Thread(() => MyClass.AddList(20));
+            t1.Start();
+            t2.Start();
+            //대기
+            t1.Join();
+            t2.Join();
+
+            using (Mutex m = new Mutex(false, "MutexName1"))
+            {
+                //뮤텍스 취득을 위해 대기
+                if(m.WaitOne(10))
+                {
+                    MyClass.MyList.Add(30);
+                }
+                else
+                {
+                    Console.WriteLine("뮤텍스 배타적 접근 권한을 얻을 수 없습니다");
+                }
+
+            }
+            MyClass.ShowList();
+
+
+            //또다른 것..###이게 주 용도임 위의 것은 굳이 뮤텍스를 쓸 필요 없음lock이나 Monitor를 사용하는 것이 나음..
+            //하나의 기기에서 하나의 프로세스만 실행되도록..
+            //GUID를 사용
+            string mtxName = "@@@4-8805-0090--";
+            bool createdNew;
+            Mutex mtx = new Mutex(true, mtxName, out createdNew);
+            //이미 해당 뮤텍스가 이미 실행중이라면..? 실행 종료
+            if(!createdNew)
+            {
+                return;
+            }
+            //그것이 아니라면 실행..!
+            MyApp.Launch();
+            #endregion
             Console.WriteLine("Hello World!");
         }
+        #region Monitor에서 사용된 메서드
+        static void WriteQueue(object val)
+        {
+            lock(lockObj)
+            {
+                Q.Enqueue(val);
+                Console.WriteLine($"{val}");
+                Monitor.Pulse(lockObj);//lock으로 묶인 뒤에 나옴...
+            }
+        }
+        static void ReadQueue()
+        {
+            while(running)
+            {
+                lock(lockObj)
+                {
+                    while(Q.Count == 0)
+                    {
+                        Monitor.Wait(lockObj);//lock블럭 내에서 호출!!
+                    }
+                    int qCount = Q.Count;
+                    for(int i = 0; i<qCount;i++)
+                    {
+                        int val = (int)Q.Dequeue();
+                        Console.WriteLine($"{val}");
+                    }
+                }
+            }
+        }
+        #endregion
+        #region Mutex_Class용
+        public class MyClass
+        {
+            //뮤텍스 선언... 
+            static Mutex mtx = new Mutex(false, "MutexName1");
+
+            public static List<int> MyList = new List<int>();
+
+            public static void AddList(int val)
+            {
+                //먼저 뮤텍스를 취득
+                mtx.WaitOne();
+                //접근권한 획득 후 실행
+                MyList.Add(val);
+                //접근권한 해제
+                mtx.ReleaseMutex();
+            }
+
+            public static void ShowList()
+            {
+                MyList.ForEach(p => Console.WriteLine(0));
+            }
+        }
+        #endregion
     }
 }

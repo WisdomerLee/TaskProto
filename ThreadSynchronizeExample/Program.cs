@@ -166,6 +166,16 @@ namespace ThreadSynchronizeExample
             //그것이 아니라면 실행..!
             MyApp.Launch();
             #endregion
+            #region Semaphore
+            //Semaphore: 공유된 자원을 지정된 숫자만큼의 스레드가 동시에 접근할 수 있음, lock, Monitor, Mutex모두 한 번에 하나의 스레드가 접근 가능하지만 Semaphore는 접근 가능한 스레드 숫자가 여러개라는 차이가 있음
+            SemClass c = new SemClass();
+
+            for(int i = 0; i <= 10; i++)
+            {
+                //처음에 동시에 5개 실행..
+                new Thread(c.Run).Start(i);
+            }
+            #endregion
             Console.WriteLine("Hello World!");
         }
         #region Monitor에서 사용된 메서드
@@ -222,5 +232,30 @@ namespace ThreadSynchronizeExample
             }
         }
         #endregion
+        
     }
+    #region Semaphore용 클래스
+    class SemClass
+    {
+        Semaphore sem;
+        public SemClass()
+        {
+            //한 번에 5개의 스레드를 허용
+            sem = new Semaphore(5,5);
+
+        }
+        public void Run(object seq)
+        {
+            //스레드가 가진 데이터 출력
+            Console.WriteLine(seq);
+            //최대 5개의 스레드가 동시에 아래의 문구를 실행
+            sem.WaitOne();
+
+            Console.WriteLine("실행중"+seq);
+            Thread.Sleep(500);
+            //세마포어 하나 해제
+            sem.Release();
+        }
+    }
+    #endregion
 }

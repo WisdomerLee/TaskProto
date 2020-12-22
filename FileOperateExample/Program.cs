@@ -10,6 +10,8 @@
 
 using System;
 using System.IO;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace FileOperateExample
 {
@@ -18,15 +20,20 @@ namespace FileOperateExample
         static void Main(string[] args)
         {
             //File, FileInfo의 사용방식 차이
-            #region File/FileInfo
+            #region File/FileInfo 비교
             //생성
             
             //이 방식과
             FileStream fs = File.Create("testfile.txt");
+            fs.Close();//스트림을 닫지 않으면 파일에 접근이 안 됨
 
             //이 방식은 같은 결과를 도출해냄
             FileInfo file = new FileInfo("testfileinfo.txt");
             FileStream fsinfo = file.Create();
+            fsinfo.Close();//마찬가지
+
+            //파일 생성 부분에 FileStream이라는 클래스가 활용되었는데 얘는 입출력과정을 도와주는 중간 매개체 역할을 수행
+
 
             //복사
 
@@ -41,9 +48,59 @@ namespace FileOperateExample
             fileinfo2.Delete();
 
             //이동
+            File.Move("a.txt", "b.txt");
 
+            FileInfo file3 = new FileInfo("a.txt");
+            file3.MoveTo("b.txt");
+
+            
 
             #endregion
+            #region 파일 생성
+            //파일 확인
+            FileStream fsa = File.Create("a.txt");
+
+            FileInfo fileInfo = new FileInfo("b.txt");
+            FileStream fsb = fileInfo.Create();
+
+            fsa.Close();
+            fsb.Close();
+            File.Copy("a.txt", "c.txt");
+            FileInfo dst = fileInfo.CopyTo("d.txt");
+            #endregion
+            #region StreamReader, StreamWriter
+            //문자열을 읽고 쓰는데 중요한 클래스
+            //StreamReader
+            // Read: 입력 스트림의 다음 문자를 불러옴
+            // ReadLine: 현재 스트림의 한줄의 문자를 읽고 데이터를 문자열로 바꾸어 반환
+            // Peek: 파일 끝에 도달허가너 다른 오류가 발생하였는지 확인하기 위한 정수 반환 문자가 없으면 -1
+            // Close: 스트림을 닫고 메모리 할당 해제
+            //StreamWriter
+            // Write: 스트림에 쓰기
+            // WriteLine: 스트림에 쓰고 마지막에 다음 줄로 바꾸고 나옴
+            // Close: 스트림을 닫고 메모리 할당 해제
+
+            #endregion
+            #region 파일 읽고 쓰기
+            //StreamWriter
+            StreamWriter sw = new StreamWriter("a.txt");
+            sw.Write("sw.Write()");
+            sw.Write(" sw.Write()");
+            sw.WriteLine(" sw.WriteLine()");
+            sw.WriteLine("sw.WriteLine()");
+
+            sw.Close();
+
+            //StreamReader
+            StreamReader sr = new StreamReader("a.txt");
+
+            while(sr.Peek() >= 0)//만약 파일에 문자가 있으면..?
+            {
+                Console.WriteLine(sr.ReadLine());//쓰기!
+            }
+            sr.Close();
+            #endregion
+
         }
     }
 }

@@ -11,6 +11,44 @@ using System;
 
 namespace EventExample
 {
+    
+    #region delegate를 event로 쓰는 방법
+    //이 부분 참고는 https://procoding-lab.tistory.com/115 여기에서
+    //다만 델리게이트를 쓰는 방식이므로 delegate를 덮어씌우게 되면 ...
+    public class BtnClass
+    {
+        //델리게이트 정의
+        public delegate void ClickEventHandler();
+        //이벤트 정의
+        public event ClickEventHandler ClickEvent;
+        //이벤트 호출 함수
+        public void CallClickEvent()
+        {
+            if(ClickEvent != null)
+            {
+                ClickEvent();
+            }
+        }
+        //이벤트 핸들러 구현(처리)
+        public void OnClickEvent()
+        {
+            Console.WriteLine("클릭 실행");
+        }
+
+    }
+    //내부에서 정의된 저 이벤트를 다른 외부(메인함수라거나 다른 클래스)에서 호출하면 됨)
+    public class Practice
+    {
+        
+        BtnClass bEvent = new BtnClass();
+        //이벤트 메서드 결합
+        bEvent.ClickEvent += new BtnClass.ClickEventHandler(BtnClass.OnClickEvent);
+        //이벤트 부르기
+        bEvent.CallClickEvent();
+
+
+    }
+    #endregion
     #region 이벤트에서 활용할 클래스
     //클래스 내부의 이벤트 정의
     class MyButton

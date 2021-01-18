@@ -183,6 +183,7 @@ namespace NetworkEx
     #region APM방식
     //소스 코드 https://nowonbun.tistory.com/685?category=507116
     //.net framework 4.0이후버전: AsyncCallback 델리게이트로 BeginAccept가 BeginSend, BeginReceive의 대기, 송신, 수신 역할을 수행함
+    #region 서버쪽
     class ClientAPM
     {
         //개행문자
@@ -209,10 +210,182 @@ namespace NetworkEx
             //연결되어 있으면
             if(socket.Connected)
             {
+                //EndReceive를 호출하면 데이터 크기를 얻을 수 있음
+                //EndReceive는 대기를 끝냄
+                int size = this.socket.EndReceive(result);
+                //받은 데이터를 텍스트로 전환
+                //텍스트로 변환하는 이 과정을 다른 이미지 변환 혹은 데이터 자료가 담긴 클래스 형식으로 바꾸면 다른 형태의 파일을 전송할 수도 있음
+                //클라이언트에서 서버로 보낼 때도 마찬가지...그림 데이터>글자>그림데이터>글자>숫자 등과 같은 것도 순서대로 바이트 배열로 바꾸고 그걸 역으로 그림데이터를 얻고 글자>그림데이터>글자>숫자 형태로 바꾸게 되면 임의의 데이터 형태도 전송이 가능함..
+                sb.Append(Encoding.ASCII.GetString(buffer, 0, size));
+
+                if(sb.Length>=2 && sb[sb.Length-2]== CR && sb[sb.Length-1]==LF)
+                {
+                    //개행 삭제
+                    sb.Length = sb.Length - 2;
+                    //문자열변환
+                    string msg = sb.ToString();
+                    //콘솔에 출력
+                    Console.WriteLine(msg);
+                    //메아리(되돌려주기)
+                    Send($"메아리 - {msg}\r\n>");
+                    //메시지가 exit이면 접속 끊기
+
+                    if("exit".Equals(msg, StringComparison.OrdinalIgnoreCase))
+                    {
+                        //접속 끊기 메시지
+                        var remoteAddr = (IPEndPoint)socket.RemoteEndPoint;
+                        Console.WriteLine($"{remoteAddr.Address.ToString()}: {remoteAddr.Port}끊김");
+                        this.socket.Close();
+                        return;
+                    }
+                    //문자열 버퍼 비우기
+                    sb.Clear();
+                }
+                //버퍼로 메시지를 받아 Receive함수로 메시지가 올 때까지 대기
+                this.socket.BeginReceive(buffer, 0, buffer.Length, SocketFlags.None, Receive, this);
 
             }
         }
+        //문자 보내기
+        void Send(string msg)
+        {
+            //문자열 바이트로..
+            byte[] data = Encoding.ASCII.GetBytes(msg);
+            //this.socket.BeginSend(data, 0, data.Length, SocketFlags.None, Send, this);
+            //클라이언트로 메시지 전송
+            socket.Send(data, data.Length, SocketFlags.None);
+        }
+        //보내기 비동기 방식
+        void Send(IAsyncResult result)
+        {
+            if(socket.Connected)
+            {
+                this.socket.EndSend(result);
+            }
+        }
     }
+    //서버쪽 !!!
+    class ProgramAPM : Socket
+    {
+        public ProgramAPM() : base(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+        {
+            //포트 1만을 씀
+            base.Bind(new IPEndPoint(IPAddress.Any, 10000));
+            base.Listen(0);
+            //비동기 소켓으로 Acept 클래스로 대기
+            BeginAccept(Accept, this);
+
+        }
+        //클라이언트가 접속했을 때의 함수
+        void Accept(IAsyncResult result)
+        {
+            //EndAccept로 접속, Client Socket을 받음, EndAcept는 대기를 끝냄
+            //Client클래스 생성
+            var client = new ClientAPM(EndAccept(result));
+            //비동기 소켓으로 Accept 클래스로 대기
+            BeginAccept(Accept, this);
+        }
+
+        static void MainAPM(string[] args)
+        {
+            new ProgramAPM();
+
+            Console.WriteLine("q를 누르면 끝남");
+            while(true)
+            {
+                string k = Console.ReadLine();
+                //q를 누르면..
+                if("q".Equals(k, StringComparison.OrdinalIgnoreCase))
+                {
+                    break;
+                }
+            }
+        }
+    }
+    #endregion
+
+    #region 클라이언트쪽
+    //소켓을 상속받아 클라이언트 소켓을 활용
+    class ProgramClientAPM : Socket
+    {
+        //메시지 구분용 개행문자
+        static char CR = (char)0x0D;
+        static char LF = (char)0x0A;
+        //메시지를 받을 메모리용 버퍼
+        byte[] buffer = new byte[1024];
+        //문자열 처리(합체 분리 등등)
+        StringBuilder sb = new StringBuilder();
+        //생성자
+        public ProgramClientAPM() : base(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+        {
+            base.BeginConnect(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 10000), Connect, this);
+            while(true)
+            {
+                //콘솔로 메시지를 받으면 서버로 되돌려 보내기
+                string k = Console.ReadLine();
+                Send(k + "\r\n");
+                if("exit".Equals(k, StringComparison.OrdinalIgnoreCase))
+                {
+                    break;
+                }
+            }
+        }
+
+        //접속하면 호출함
+        void Connect(IAsyncResult result)
+        {
+            //접속 대기 끝내기
+            base.EndConnect(result);
+
+            //버퍼로 메시지를 받아 Receive함수로 메시지가 올 때까지 대기
+            base.BeginReceive(buffer, 0, buffer.Length, SocketFlags.None, Receive, this);
+
+        }
+        //메시지가 오면 호출됨
+        void Receive(IAsyncResult result)
+        {
+            if(Connected)
+            {
+
+
+                int size = this.EndReceive(result);
+                //문자열로 변환(보낸 쪽에 따라 달라짐 보낸 파일이 그림이면 이미지로 바꾸던가...)
+                sb.Append(Encoding.ASCII.GetString(buffer, 0, size));
+                if(sb.Length>=3 && sb[sb.Length-3]==CR &&sb[sb.Length-2]==LF &&sb[sb.Length-1]=='>')
+                {
+                    string msg = sb.ToString();
+
+                    Console.Write(msg);
+                    sb.Clear();
+                }
+                base.BeginReceive(buffer, 0, buffer.Length, SocketFlags.None, Receive, this);
+
+            }
+        }
+
+
+        void Send(string msg)
+        {
+
+            byte[] data = Encoding.ASCII.GetBytes(msg);
+            Send(data, data.Length, SocketFlags.None);
+        }
+        //비동기 방식으로..
+        void Send(IAsyncResult result)
+        {
+            if(base.Connected)
+            {
+                base.EndSend(result);
+            }
+        }
+        static void MainClientAPM(string[] args)
+        {
+            //프로그램 생성...
+            new ProgramClientAPM();
+        }
+    }
+    #endregion
+
 
     #endregion
 }

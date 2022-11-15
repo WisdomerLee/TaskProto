@@ -107,7 +107,7 @@ namespace EventExample
             Console.WriteLine("Hello World!");
 
         }
-
+        //쓰기
         public void Run()
         {
             MyButton btn = new MyButton();

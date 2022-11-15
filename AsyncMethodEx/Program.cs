@@ -26,7 +26,7 @@ namespace AsyncMethodEx
             //갱신되면 아래의 함수들을 실행
 
         }
-
+        //긴 처리 함수
         static double LongCalc(double r)
         {
             Thread.Sleep(3000);//이것을 쓰는 이유: thread lock이 발생하거나 실행 중 무한 루프를 돌 수 있기 때문..

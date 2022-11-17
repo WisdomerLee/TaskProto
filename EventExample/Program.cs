@@ -117,7 +117,7 @@ namespace EventExample
             //이렇게도 사용 가능..
             btn.Click += btn_Click;
         }
-
+        //버튼 함수
         void btn_Click(object sender, EventArgs e)
         {
             Console.WriteLine("버튼 눌림");
